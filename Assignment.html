@@ -203,7 +203,8 @@ POS &lt;- read_delim(&quot;https://raw.githubusercontent.com/EEOB-BioData/BCB546
 <h2>Merging Genotypes and SNP Positions and Writing Files</h2>
 <p>Within the code below the genotype and position data are united and then separated by chromosome and ordered before writing the data to the appropriate files. To accomplish this, the genotype data are first subset into either the species group “maize” or “teosinte” based on the group designation within the <code>fang_et_al_genotypes.txt</code> file/<code>geno</code> object. Then, the subset genotype file was merged with the chromosome/position information found in <code>snp_position.txt</code> file/<code>POS</code> object.</p>
 <p>The chromosome groups present in the data file have been assessed so that they can be handled correctly depending on whether the group is a numerical chromosome representing an actual physical chromosome or a non-numerical group which in this data was used for positions which were ambiguous (i.e. unknown or multiple). Each numerical chromosome group was written to two files. One file (designated “asc.txt”) contains SNPs located on the chromosome in ascending order of physical position with unknown genotypes formatted as ?/?. The second file (“desc.txt”) contains the same SNPs in descending order with unknown genotypes formatted as -/-.</p>
-<p>An example of a complete file name is “maize_chr_10_desc.txt”. This file contains genotypes from maize group samples which are located on chromosome 10 and are sorted in descending order. If the chromosome group was a non-numeric type only one file was written. <!-- Files containing SNPs of unknown or multiple positions (ex: "teosinte_chr_unknown.txt") are not sorted, and unknown genotypes are stored as ?/?. Files containing maize group genotype beginning in "maize" and are written to the ./maize directory. Teosinte files have been stored in a likewise fashion.  --></p>
+<p>An example of a complete file name is “maize_chr_10_desc.txt”. This file contains genotypes from maize group samples which are located on chromosome 10 and are sorted in descending order. If the chromosome group was a non-numeric type only one file was written.</p>
+<p>Files containing SNPs of unknown or multiple positions (ex: “teosinte_chr_unknown.txt”) are not sorted, and unknown genotypes are stored as ?/?. Files containing maize group genotype beginning in “maize” and are written to the ./maize directory. Teosinte files have been stored in a likewise fashion.</p>
 <p>Two files are also written directly to the working directory. One contains the maize subset of genotypes prior to ordering or separating by chromosome and the other contains the teosinte subset of the same format.</p>
 <p>Finally, SNPs which were mapped to a specific chromosome but still list the position as “multiple” were treated identically to SNPs which had the chromosome designated as “multiple” and are not contained within their respective chromosome files.</p>
 <pre class="r"><code>for (species in c(&quot;maize&quot;, &quot;teosinte&quot;)){
@@ -236,11 +237,11 @@ POS &lt;- read_delim(&quot;https://raw.githubusercontent.com/EEOB-BioData/BCB546
         arrange(desc(as.numeric(Position))) %&gt;%
         lapply(., gsub, pattern = &quot;\\?&quot;, replacement = &quot;\\-&quot;) %&gt;% do.call(cbind, .) %&gt;% ### Replaces missing data symbol ?/? with -/-
         write.table(file = paste(species, &quot;/&quot;, species, &quot;_chr_&quot;, chrm, &quot;_desc.txt&quot;, sep = &quot;&quot;), sep = &quot;\t&quot;, col.names = TRUE, row.names = FALSE, quote = FALSE)
-    } else if (chrm %in% nonnumeric.chr){ ### Uncomment the text within this else if{} to write &quot;unknown&quot; and &quot;multiple&quot; chromosome groups to separate files
-      # geno.POS.merge %&gt;%
-      #   filter(Chromosome==chrm | Position==chrm) %&gt;%
-      #   arrange(Position) %&gt;%
-      #   write.table(file = paste(species, &quot;/&quot;, species, &quot;_chr_&quot;, chrm, &quot;.txt&quot;, sep = &quot;&quot;), sep = &quot;\t&quot;, col.names = TRUE, row.names = FALSE, quote = FALSE)
+    } else if (chrm %in% nonnumeric.chr){
+      geno.POS.merge %&gt;%
+        filter(Chromosome==chrm | Position==chrm) %&gt;%
+        arrange(Position) %&gt;%
+        write.table(file = paste(species, &quot;/&quot;, species, &quot;_chr_&quot;, chrm, &quot;.txt&quot;, sep = &quot;&quot;), sep = &quot;\t&quot;, col.names = TRUE, row.names = FALSE, quote = FALSE)
     } else {
       print(&quot;Check Data: Unusual Chromosome Group&quot;)
     }

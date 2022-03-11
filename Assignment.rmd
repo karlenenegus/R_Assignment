@@ -48,7 +48,8 @@ The chromosome groups present in the data file have been assessed so that they c
 Each numerical chromosome group was written to two files. One file (designated "asc.txt") contains SNPs located on the chromosome in ascending order of physical position with unknown genotypes formatted as ?/?. The second file ("desc.txt") contains the same SNPs in descending order with unknown genotypes formatted as -/-. 
 
 An example of a complete file name is "maize_chr_10_desc.txt". This file contains genotypes from maize group samples which are located on chromosome 10 and are sorted in descending order. If the chromosome group was a non-numeric type only one file was written. 
-<!-- Files containing SNPs of unknown or multiple positions (ex: "teosinte_chr_unknown.txt") are not sorted, and unknown genotypes are stored as ?/?. Files containing maize group genotype beginning in "maize" and are written to the ./maize directory. Teosinte files have been stored in a likewise fashion.  -->
+
+Files containing SNPs of unknown or multiple positions (ex: "teosinte_chr_unknown.txt") are not sorted, and unknown genotypes are stored as ?/?. Files containing maize group genotype beginning in "maize" and are written to the ./maize directory. Teosinte files have been stored in a likewise fashion.
 
 Two files are also written directly to the working directory. One contains the maize subset of genotypes prior to ordering or separating by chromosome and the other contains the teosinte subset of the same format.
 
@@ -85,11 +86,11 @@ for (species in c("maize", "teosinte")){
         arrange(desc(as.numeric(Position))) %>%
         lapply(., gsub, pattern = "\\?", replacement = "\\-") %>% do.call(cbind, .) %>% ### Replaces missing data symbol ?/? with -/-
         write.table(file = paste(species, "/", species, "_chr_", chrm, "_desc.txt", sep = ""), sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
-    } else if (chrm %in% nonnumeric.chr){ ### Uncomment the text within this else if{} to write "unknown" and "multiple" chromosome groups to separate files
-      # geno.POS.merge %>%
-      #   filter(Chromosome==chrm | Position==chrm) %>%
-      #   arrange(Position) %>%
-      #   write.table(file = paste(species, "/", species, "_chr_", chrm, ".txt", sep = ""), sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+    } else if (chrm %in% nonnumeric.chr){
+      geno.POS.merge %>%
+        filter(Chromosome==chrm | Position==chrm) %>%
+        arrange(Position) %>%
+        write.table(file = paste(species, "/", species, "_chr_", chrm, ".txt", sep = ""), sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
     } else {
       print("Check Data: Unusual Chromosome Group")
     }
