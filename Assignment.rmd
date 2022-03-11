@@ -1,0 +1,243 @@
+---
+title: "R Assignement BCB546"
+author: "Karlene Negus"
+date: "3/10/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## Set Up
+
+To get started first load the "tidyverse" package and set the working directory to a folder where you would like the generated files to be written.
+
+```{r}
+library(tidyverse)
+setwd("/home/karlene/Desktop/BCB546_2022/R_Assignment")
+```
+
+The files used in this assignment should next be stored as data in the R environment. The `fang_et_al_genotypes.txt` file previously used in the UNIX assignment is stored under the "geno" object name. The `snp_position.txt` file is stored to "POS".
+
+```{r}
+geno <- read_delim("https://raw.githubusercontent.com/EEOB-BioData/BCB546-Spring2022/main/assignments/UNIX_Assignment/fang_et_al_genotypes.txt", delim = "\t", na = "", show_col_types = FALSE)
+POS <- read_delim("https://raw.githubusercontent.com/EEOB-BioData/BCB546-Spring2022/main/assignments/UNIX_Assignment/snp_position.txt", delim = "\t", na = "", show_col_types = FALSE)
+
+```
+## Creating Directories for File Organization
+
+To better organize the files created in subsequent processes two directories (./maize and ./teosine) need to be created. Alternatively if these files already exist in the working directory, all files with be deleted with this step.
+
+```{r}
+for(i in c("maize", "teosinte")){
+  if(paste("./", i, sep = "") %in% list.dirs()){
+    file.remove(list.files(paste("./", i, sep = ""), full.names = TRUE))
+  } else {
+    dir.create(i)
+  }
+}
+```
+
+## Merging Genotypes and SNP Positions and Writing Files
+
+Within the below code the genotype and positon data are united and then separated and ordered before writing the data to the appropriate files. To accomplish this, the genotype data are first subset into either the species group "maize" or "teosinte" based on the Group designation within the `fang_et_al_genotypes.txt` file. Then, the subset genotype file is then merged with the chromosome/position information. 
+
+The chromosome groups present in the data file have been assessed so that they can be handled correctly depending on if the group is a numerical chromosome representing an actual physical chromosome or a non-numerical group which in this data was used for positions which were ambiguous (i.e. unknown or multiple). 
+
+Each numerical chromosome group was written to two files. One file (designated "asc.txt") contains SNPs located on the chromosome in ascending order of physical position with unknown genotypes formatted as ?/?. The second file ("desc.txt") contains the same SNPs in descending order with unknown genotypes formatted as -/-. An example of a complete file name is "maize_chr_10_desc.txt". This file contains genotypes from maize group samples which were located on chromosome 10 and are sorted in descending order. If the chromosome group was a non-numeric type only one file was written. Files containing SNPs of unknown or multiple positions (ex: "teosinte_chr_unknown.txt") are not sorted and unknown genotypes are stored as ?/?. Files containing maize group genotype beginning in "maize" and are written to the ./maize directory. Teosinte files have been stored in a likewise fashion. 
+
+Two files are also written directly to the working directory. One contains the maize subset of genotypes prior to ordering or separating by chromosome and the other contains the teosinte subset of the same format.
+
+Finally, SNPs which were mapped to a specific chromosome but still list the position as "multiple" were treated identically to SNPs which had the chromosome designated as "multiple".
+
+```{r}
+for (species in c("maize", "teosinte")){
+  if (species=="maize"){
+    sp.group <- c("ZMMIL|ZMMLR|ZMMMR")
+  } else if (species=="teosinte"){
+    sp.group <- c("ZMPBA|ZMPIL|ZMPJA")
+  }
+  subset.geno <- t(geno[grep(sp.group, geno$Group),c(-2,-3)])
+  colnames(subset.geno) <- subset.geno[1,]
+  subset.geno <- subset.geno[2:nrow(subset.geno),]
+  if(all(rownames(subset.geno)==POS$SNP_ID)){
+    geno.POS.merge <- cbind(POS[,c(1,3,4)], subset.geno)
+    write.table(geno.POS.merge, file = paste(species, "_genotype_positions.txt", sep = ""), sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+    } else{
+    print("ERROR: SNP IDs do not match")
+    remove(geno.POS.merge)
+    }
+  all.chr <- unique(geno.POS.merge$Chromosome)
+  nonnumeric.chr <- all.chr[grep("[a-z]", all.chr, ignore.case = TRUE)]
+  numeric.chr <- all.chr[grep("[0-9]", all.chr)]
+  numeric.positions <- unique(geno.POS.merge$Position)[grep("[a-z]", unique(geno.POS.merge$Position), ignore.case = TRUE, invert = TRUE)]
+  for(chrm in all.chr){
+    if(chrm %in% numeric.chr){
+      geno.POS.merge %>%
+        filter(Position %in% numeric.positions) %>% ### Removes positions which are not numbers
+        filter(Chromosome==chrm) %>% ### Groups data by chromosome
+        arrange(as.numeric(Position)) %T>% ### sorts data by position
+        write.table(file = paste(species, "/", species, "_chr_", chrm, "_asc.txt", sep = ""), col.names = TRUE, row.names = FALSE, quote = FALSE) %>%
+        arrange(desc(as.numeric(Position))) %>%
+        lapply(., gsub, pattern = "\\?", replacement = "\\-") %>% do.call(cbind, .) %>% ### Replaces missing data symbol ?/? with -/-
+        write.table(file = paste(species, "/", species, "_chr_", chrm, "_desc.txt", sep = ""), sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+    } else if (chrm %in% nonnumeric.chr){
+      geno.POS.merge %>%
+        filter(Chromosome==chrm | Position==chrm) %>%
+        arrange(Position) %>%
+        write.table(file = paste(species, "/", species, "_chr_", chrm, ".txt", sep = ""), sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+    } else {
+      print("Check Data: Unusual Chromosome Group")
+    }
+  }
+}
+```
+
+## Formatting Data for Plotting
+
+In order to plot the data, the `maize_genotype_positions.txt` and `teosinte_genotype_positions.txt` written in the previous step are read in as objects and the data are reformatted into a long format to facilitate plotting.
+
+```{r}
+### Read in Data
+maize <- read.delim("maize_genotype_positions.txt")
+teosinte <- read.delim("teosinte_genotype_positions.txt")
+
+### Load Library
+library("reshape2")
+
+##Long format maize data
+maize.reshape <- mutate(maize, cat=paste(maize$SNP_ID, maize$Chromosome, maize$Position, sep = ";"), .before = SNP_ID)
+maize.reshape <- maize.reshape[,c(-2,-3,-4)] %>% melt(., id="cat")
+maize.reshape <- cbind(as.data.frame(str_split(maize.reshape[,1], ";", simplify = TRUE))[,1:3], "maize", maize.reshape[,2:3])
+colnames(maize.reshape) <- c("SNP_ID", "Chromosome", "Position", "Species", "Sample_ID", "Genotype")
+
+##Long format teosine data
+teosinte.reshape <- mutate(teosinte, cat=paste(teosinte$SNP_ID, teosinte$Chromosome, teosinte$Position, sep = ";"), .before = SNP_ID)
+teosinte.reshape <- teosinte.reshape[,c(-2,-3,-4)] %>% melt(., id="cat")
+teosinte.reshape <- cbind(as.data.frame(str_split(teosinte.reshape[,1], ";", simplify = TRUE))[,1:3], "teosinte", teosinte.reshape[,2:3])
+colnames(teosinte.reshape) <- c("SNP_ID", "Chromosome", "Position", "Species", "Sample_ID", "Genotype")
+
+##Merge long formats
+reformatted.genos <- rbind(teosinte.reshape, maize.reshape)
+
+```
+
+Genotypes were then also characterized as heterozygous, homozygous or unknown. 
+
+```{r}
+genotypes <- unique(reformatted.genos$Genotype)
+homozygous <- c("A/A", "G/G", "C/C", "T/T")
+unknown <- genotypes[grep("[A|G|C|T]", genotypes, invert = TRUE)]
+heterozygous <- genotypes [which((genotypes %in% c(homozygous, unknown))==FALSE)]
+
+reformatted.genos[which(reformatted.genos$Genotype %in% unknown),7] <- "unknown"
+reformatted.genos[which(reformatted.genos$Genotype %in% homozygous),7] <- "homozygous"
+reformatted.genos[which(reformatted.genos$Genotype %in% heterozygous),7] <- "heterozygous"
+colnames(reformatted.genos)[7] <- "SNP_Type"
+```
+
+Chromosomes were stored as factors and reordered numerically for subsequent plot readibility.
+
+```{r}
+reformatted.genos$Chromosome <- as.factor(reformatted.genos$Chromosome)
+numeric.chr <- levels(reformatted.genos$Chromosome) %>% grep("[^a-z]", ., ignore.case = TRUE, value = TRUE) %>% as.numeric() %>% sort
+non.numeric.chr <- levels(reformatted.genos$Chromosome) %>% grep("[a-z]", ., ignore.case = TRUE, value = TRUE)%>% sort
+levels(reformatted.genos$Chromosome) <- c(numeric.chr, non.numeric.chr)
+
+```
+
+## Plot 1
+
+The number of distinct SNP IDs which are located on each chromosome was plotted. A few duplicated positions existed because of SNPs which have positions listed as multiple or unknown.
+
+```{r, echo=FALSE}
+reformatted.genos %>%
+  distinct(.[,1:3]) %>%
+  ggplot(., aes(x=Chromosome, fill=duplicated(.[,c(2,3)]))) +
+  geom_bar()+
+  ylab("Number of SNPs")+
+  scale_fill_discrete(name = "Duplicated Positon")+
+  ggtitle("Total SNPs on Each Chromosome")
+
+```
+
+## Plot 2
+
+The number of distinct SNP IDs and the relative position along each chromosome was plotted.
+
+```{r, echo=FALSE, warning=FALSE}
+reformatted.genos %>%
+  distinct(.[,1:3]) %>%
+  filter(!is.na(as.numeric(Position))) %>%
+  # filter((SNP_Type=="unknown")==FALSE) %>%
+  ggplot(., aes(x=as.numeric(Position))) +
+  geom_histogram(binwidth = 10000000)+
+  facet_grid(Chromosome~.)+
+  xlab("Position")+
+  ylab("Number of SNPs")+
+  ggtitle("Total SNPs across Chromosomes")
+```
+
+## Plot 3
+
+The number of SNP positions on each chromosome was split into species. Maize and Teosinte samples were evaluated at the same SNPs so unique SNP positions remain identical between the two groups. 
+
+```{r, echo=FALSE}
+reformatted.genos %>%
+  distinct(.[,2:4]) %>%
+  ggplot(., aes(x=Chromosome, fill=Species)) +
+  geom_bar(position = "dodge")+
+  ylab("Number of SNP Positions")+
+  ggtitle("Total SNP Positions on Each Chromosome by Species")
+```
+
+The the data numbers differ between maize and teosinte only when considering the number of sample which were taken. There was a greater number of samples taken from maize so maize also has more SNP genotypes as a concequence. 
+
+```{r, echo=FALSE}
+reformatted.genos %>%
+  distinct(.[,c(4,5)]) %>%
+  ggplot(., aes(x=Species)) +
+  geom_bar()+
+  ylab("Sample ID Count")+
+  ggtitle("Total Samples by Species Group")
+
+reformatted.genos %>%
+  # distinct(.[,1:4]) %>%
+  ggplot(., aes(x=Species, fill=Chromosome)) +
+  geom_bar()+
+  ylab("Genotype Counts")+
+  ggtitle("Total Genotyped Sites by Species Group")
+```
+
+## Plot 5
+
+The proportions of genotypes which were heterozygous, homozygous, or unknown differed slightly between the maize and teosinte groups with a higher proportion of heterozygous genotypes from teosinte. 
+
+```{r, echo=FALSE}
+reformatted.genos %>%
+  # filter(SNP_Type=="heterozygous")%>%
+  # filter(unique(.[,1:5])) %>%
+  ggplot(., aes(x=Species, fill=SNP_Type)) +
+  geom_bar(position = "fill")+
+  ylab("Proportion of Total Genotyped Sites")+
+  scale_fill_discrete(name = "Genotype Group")+
+  ggtitle("Genotype Group Proportions by Species Group")
+```
+
+## Plot 6
+
+The proportion of heterozygous, homozygous, and unknown genotypes for each sample was plotted. Most samples had genotype group proportions similar to the overall proportions for the species group. However, a small but noticible subset of samples had much higher homozygous proportions than the species groups. 
+
+```{r, echo=FALSE}
+reformatted.genos %>%
+  ggplot(., aes(x=Sample_ID, fill=paste(Species, SNP_Type, sep = " "))) +
+  geom_bar(position = "fill")+
+  theme(axis.text.x = element_blank(),
+        axis.ticks = element_blank())+
+  xlab("Sample ID")+
+  ylab("Proportion of Total Genotyped Sites")+
+  scale_fill_discrete(name = "Species & Genotype Group")+
+  ggtitle("Genotype Group Proportions by Sample ID")
+```
