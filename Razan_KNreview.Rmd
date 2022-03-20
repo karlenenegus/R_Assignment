@@ -1,0 +1,14 @@
+---
+title: "Razan-review"
+author: "Razan Alsayed Omar"
+date: '2022-03-20'
+output: html_document
+---
+ ##################################################################################################### 
+ Review:
+ 1. You've nicely organized all files into folders and gave really detailed description for everything, great job!
+ 2.Your code is working for me
+ 3.I couldn't find in you rmd file where you did your data inspection and own visualization, all I could see was your code for data processing and visualization
+ 4. I spotted an unintended (but small) error in your file, you jumped from plot 3 to plot 5, seemed to have missed plot 4? 
+ 5. Please make sure that you have the data inspection and your own visualization added. Please let me know if it is somewhere else even though I've looked at all your files. Was your own visualization plot 7 in your rmd file? It would be great if you would have subtitles similar to the R assignment format (Data Inspection, Data processing, SNPs per chromosome plot, Missing data and heterozygosity plot, Own Visualization).
+#######################################################################################################
