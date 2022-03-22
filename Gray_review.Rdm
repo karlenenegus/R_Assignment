@@ -1,0 +1,10 @@
+---
+title: "Gray_Review.Rmd"
+output: html_document
+---
+#Good job using the loop to seperate and organize files. This is very efficent and produces the necessary files. 
+#I would suggest using short annotations for code rather than paragraphs. Might make it a little easier to interpret in the future. 
+#Good job reformating the maize and teosinte merged files for visulization 
+#Good job coding for R to identify homozygotes and heterozygotes 
+#Great visulizations for SNPs across chromosomes and SNPs between species!
+#Overall, great job sorting data using efficent loops and then reformating for visulization. All the visuals looked great and conveyed information clearly! I don't have any major changes which I would make. Maybe in some areas making shorter annotations, but that's not a major detail 
